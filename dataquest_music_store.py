@@ -91,3 +91,49 @@ ORDER BY 2 DESC
 run_query(q2)
 
 
+# Below: A query that groups # of customers, total sales and avg order by country 
+# If country had only 1 customer, it was grouped in 'Other' in the 'country' column 
+
+sales_by_country = '''
+
+WITH country_or_other AS (
+    
+    SELECT
+        CASE
+            WHEN (
+                SELECT COUNT(*) count
+                FROM customer 
+                WHERE country = c.country
+                ) = 1 THEN 'Other'
+            ELSE c.country
+        END AS country,
+        c.customer_id,
+        il.*
+    FROM invoice_line il
+    INNER JOIN invoice i ON il.invoice_id = i.invoice_id
+    INNER JOIN customer c ON i.customer_id = c.customer_id
+)
+
+SELECT
+    country,
+    customers,
+    total_sales,
+    average_order
+FROM
+    (
+    SELECT 
+        country,
+        count(distinct customer_id) customers,
+        SUM(unit_price) total_sales,
+        SUM(unit_price) / count(distinct invoice_id) average_order,
+        CASE
+            WHEN country = "Other" THEN 1
+            ELSE 0
+        END AS sort
+    FROM country_or_other
+    GROUP BY country
+    ORDER BY sort ASC, total_sales DESC
+    );
+'''
+
+run_query(sales_by_country)
